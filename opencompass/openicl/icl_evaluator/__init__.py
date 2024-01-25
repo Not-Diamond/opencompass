@@ -9,3 +9,5 @@ from .icl_misc_evaluator import AverageMinKEvaluator  # noqa
 from .icl_misc_evaluator import AveragePPLEvaluator  # noqa
 from .icl_toxic_evaluator import ToxicEvaluator  # noqa
 from .lm_evaluator import LMEvaluator  # noqa
+
+from .icl_notdiamond_evaluator import *
