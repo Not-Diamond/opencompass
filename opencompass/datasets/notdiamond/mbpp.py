@@ -125,7 +125,7 @@ class NDMBPPEvaluator(BaseEvaluator):
                 index, key = execution(programs, i, 3)
                 result[key] += 1
                 details[str(index)] = {
-                    'programs': predictions[index],
+                    'prompt': predictions[index],
                     'result': key
                 }
                 sample_result = {
