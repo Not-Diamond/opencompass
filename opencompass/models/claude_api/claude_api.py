@@ -118,6 +118,6 @@ class Claude(BaseAPIModel):
             num_retries += 1
         self.logger.error('Calling Claude API failed after retrying for '
                            f'{self.retry} times. Check the logs for details.')
-        return error_msg
+        return f"### No response ### {error_msg}"
         # raise RuntimeError('Calling Claude API failed after retrying for '
         #                    f'{self.retry} times. Check the logs for details.')

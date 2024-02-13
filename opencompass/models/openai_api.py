@@ -418,7 +418,7 @@ class OpenAIAllesAPIN(OpenAI):
 
         self.logger.error('Calling OpenAI API failed after retrying for '
                            f'{self.retry} times. Check the logs for details.')
-        return response['msg']
+        return f"### No response ### {response['msg']}"
         # raise RuntimeError('API call failed.')
 
     def get_token_len(self, prompt: str) -> int:

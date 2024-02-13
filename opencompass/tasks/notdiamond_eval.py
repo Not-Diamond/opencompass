@@ -1,3 +1,4 @@
+import os
 import argparse
 import copy
 import fnmatch
@@ -25,8 +26,11 @@ from opencompass.utils import (build_dataset_from_cfg, dataset_abbr_from_cfg,
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+import wandb
+
 from notdiamond_server.database import crud, schemas
 from notdiamond_server.database.initialize import Base
+from notdiamond_server.config import WANDB_API_KEY, EVALUATIONS_WORK_DIR
 
 
 def extract_role_pred(s: str, begin_str: Optional[str],
@@ -259,6 +263,48 @@ class NDICLEvalTask(BaseTask):
         mmengine.dump(result, out_path, ensure_ascii=False, indent=4)
 
         self._save_results_to_db(result, icl_evaluator.metric)
+        self._log_eval_success_to_wandb(result, icl_evaluator.metric)
+
+    def _log_eval_success_to_wandb(self, result: dict, metric: str):
+        model = self.model_cfg["abbr"]
+        dataset = self.dataset_cfg['abbr']
+        timestamp = osp.basename(self.work_dir)
+        run = wandb.init(project=f"LLM Eval - {timestamp}",
+                         name=f"{model}",
+                         dir=self.work_dir)
+        columns = ["sample_id", "dataset", "metric", "success"]
+        eval_success_table = wandb.Table(columns=columns)
+
+        sample_score = result["sample_score"]
+        details = result["details"]
+        assert isinstance(sample_score, list) or isinstance(sample_score, dict)
+
+        if isinstance(sample_score, list):
+            for i, sample_result in enumerate(sample_score):
+                origin_prediction = details[f"{i}"]["origin_prediction"]
+                if "### No response ###" in origin_prediction:
+                    success = False
+                else:
+                    success = True
+
+                eval_success_table.add_data(sample_result['sample_id'],
+                                            dataset,
+                                            metric,
+                                            success)
+        elif isinstance(sample_score, dict):
+            for sub, sub_score in sample_score.items():
+                for i, sample_result in enumerate(sub_score):
+                    origin_prediction = details[f"{i}"]["origin_prediction"]
+                    if "### No response ###" in origin_prediction:
+                        success = False
+                    else:
+                        success = True
+
+                    eval_success_table.add_data(sample_result['sample_id'],
+                                                dataset,
+                                                f"{metric}.{sub}",
+                                                success)
+        run.log({"eval_success": eval_success_table})
 
     def _save_results_to_db(self, result: dict, metric: str):
         assert "db_url" in self.dataset_cfg
@@ -405,6 +451,7 @@ def parse_args():
 
 
 if __name__ == '__main__':
+    os.environ['WANDB_API_KEY'] = WANDB_API_KEY
     args = parse_args()
     cfg = Config.fromfile(args.config)
     start_time = time.time()

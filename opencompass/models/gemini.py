@@ -114,7 +114,11 @@ class Gemini(BaseAPIModel):
                 response = self.model.generate_content(messages,
                                                        generation_config=self.genai.types.GenerationConfig(temperature=0.),
                                                        safety_settings=self.safety_settings)
-                content = response.text.strip()
+                content_parts = response.candidates[0].content.parts
+                content = ""
+                for part in content_parts:
+                    content += part.text
+                    content += "\n"
                 return content
             except Exception as e:
                 self.logger.error(e)
@@ -122,6 +126,6 @@ class Gemini(BaseAPIModel):
             num_retries += 1
         self.logger.error('Calling Gemini API failed after retrying for '
                            f'{self.retry} times. Check the logs for details.')
-        return error_msg
+        return f"### No response ### {error_msg}"
         # raise RuntimeError('Calling Gemini API failed after retrying for '
         #                    f'{self.retry} times. Check the logs for details.')
