@@ -1,4 +1,3 @@
-import os
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List, Optional, Union
 
@@ -41,20 +40,21 @@ class Gemini(BaseAPIModel):
                          meta_template=meta_template,
                          retry=retry)
         try:
-            import google.generativeai
+            import google.generativeai as genai
+            from google.generativeai.types import HarmCategory, HarmBlockThreshold
+            genai.configure(api_key=key)
+            self.model = genai.GenerativeModel(f"models/{path}")
+            self.genai = genai
         except ImportError:
             raise ImportError('Import google.generativeai failed. Please install it '
                               'with "pip install -q -U google-generativeai" and try again.')
 
-        try:
-            import litellm
-        except ImportError:
-            raise ImportError('Import litellm failed. Please install it '
-                              'with "pip install litellm" and try again.')
-
-        os.environ["GEMINI_API_KEY"] = key
-        self.litellm = litellm
-        self.model = path
+        self.safety_settings = {
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+        }
 
     def generate(
         self,
@@ -97,28 +97,31 @@ class Gemini(BaseAPIModel):
         assert isinstance(input, (str, PromptList))
 
         if isinstance(input, str):
-            messages = [{"role": "user", "content": f'{input}'}]
+            messages = [{"role": "user", "parts": [f'{input}']}]
         else:
             messages = []
             for item in input:
                 if item['role'] == 'HUMAN' or item['role'] == 'SYSTEM':
-                    messages.append({"role": "user", "content": item["prompt"]})
+                    messages.append({"role": "user", "parts": [item["prompt"]]})
                 elif item['role'] == 'BOT':
-                    messages.append({"role": "assistant", "content": item["prompt"]})
+                    messages.append({"role": "model", "parts": [item["prompt"]]})
             assert messages[-1]["role"] == "user"
 
         num_retries = 0
         while num_retries < self.retry:
             self.wait()
             try:
-                response = self.litellm.completion(
-                    model=f"gemini/{self.model}",
-                    messages=messages)
-                content = response['choices'][0]['message']['content'].strip()
+                response = self.model.generate_content(messages,
+                                                       generation_config=self.genai.types.GenerationConfig(temperature=0.),
+                                                       safety_settings=self.safety_settings)
+                content = response.text.strip()
                 return content
             except Exception as e:
                 self.logger.error(e)
+                error_msg = str(e)
             num_retries += 1
-        raise RuntimeError('Calling Gemini API failed after retrying for '
+        self.logger.error('Calling Gemini API failed after retrying for '
                            f'{self.retry} times. Check the logs for details.')
-#!/usr/bin/env python3
+        return error_msg
+        # raise RuntimeError('Calling Gemini API failed after retrying for '
+        #                    f'{self.retry} times. Check the logs for details.')

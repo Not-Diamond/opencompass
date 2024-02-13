@@ -109,10 +109,15 @@ class Claude(BaseAPIModel):
                 completion = self.anthropic.completions.create(
                     model=self.model,
                     max_tokens_to_sample=max_out_len,
+                    temperature=0.,
                     prompt=messages)
                 return completion.completion
             except Exception as e:
                 self.logger.error(e)
+                error_msg = str(e)
             num_retries += 1
-        raise RuntimeError('Calling Claude API failed after retrying for '
+        self.logger.error('Calling Claude API failed after retrying for '
                            f'{self.retry} times. Check the logs for details.')
+        return error_msg
+        # raise RuntimeError('Calling Claude API failed after retrying for '
+        #                    f'{self.retry} times. Check the logs for details.')

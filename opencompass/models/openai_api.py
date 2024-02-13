@@ -65,7 +65,7 @@ class OpenAI(BaseAPIModel):
                  meta_template: Optional[Dict] = None,
                  openai_api_base: str = OPENAI_API_BASE,
                  mode: str = 'none',
-                 temperature: Optional[float] = None):
+                 temperature: Optional[float] = 0.):
 
         super().__init__(path=path,
                          max_seq_len=max_seq_len,
@@ -416,7 +416,10 @@ class OpenAIAllesAPIN(OpenAI):
                     return choices[0]['message']['content'].strip()
             self.logger.error(response['msg'])
 
-        raise RuntimeError('API call failed.')
+        self.logger.error('Calling OpenAI API failed after retrying for '
+                           f'{self.retry} times. Check the logs for details.')
+        return response['msg']
+        # raise RuntimeError('API call failed.')
 
     def get_token_len(self, prompt: str) -> int:
         """Get lengths of the tokenized string. Only English and Chinese
