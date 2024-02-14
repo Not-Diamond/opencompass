@@ -1,4 +1,5 @@
 import os
+import copy
 import random
 from typing import List
 
@@ -187,6 +188,7 @@ class NDEMEvaluator(BaseEvaluator):
                 'error': 'predictions and references have different '
                 'length'
             }
+        origin_predictions = copy.deepcopy(predictions)
         predictions = [
             general_postprocess(prediction) for prediction in predictions
         ]
@@ -194,12 +196,12 @@ class NDEMEvaluator(BaseEvaluator):
                              for i in references]
 
         cnt = 0
-        details = []
+        details = {}
         sample_accuracy = []
-        for pred, ans, origin_ans, id in zip(predictions, processed_answers,
-                                             references, sample_ids):
+        for i, (pred, ans, origin_ans, origin_pred, id) in enumerate(zip(predictions, processed_answers,
+                                                                         references, origin_predictions, sample_ids)):
             answers = list(set(ans + origin_ans))
-            detail = {'pred': pred, 'answer': answers}
+            detail = {'pred': pred, 'answer': answers, 'origin_prediction': origin_pred}
             if pred in ans or pred in origin_ans:
                 cnt += 1
                 detail['correct'] = True
@@ -213,7 +215,7 @@ class NDEMEvaluator(BaseEvaluator):
                 "score": score
             }
             sample_accuracy.append(sample_result)
-            details.append(detail)
+            details[f"{i}"] = detail
 
         score = cnt / len(predictions) * 100
 

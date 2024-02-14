@@ -35,11 +35,21 @@ def check_correctness(problem: Dict, completion: str, timeout: float,
             # These system calls are needed when cleaning up tempdir.
             import os
             import shutil
+            import subprocess
+            Popen = subprocess.Popen  # type: ignore
             rmtree = shutil.rmtree
+            move = shutil.move
             rmdir = os.rmdir
             chdir = os.chdir
             getcwd = os.getcwd
             unlink = os.unlink
+            environ = os.environ
+            putenv = os.putenv
+            remove = os.remove
+            removedirs = os.removedirs
+            rename = os.rename
+            renames = os.renames
+            chmod = os.chmod
 
             # Disable functionalities that can make destructive changes to the test.
             reliability_guard()
@@ -74,10 +84,19 @@ def check_correctness(problem: Dict, completion: str, timeout: float,
 
             # Needed for cleaning up.
             shutil.rmtree = rmtree
+            shutil.move = move
             os.rmdir = rmdir
             os.chdir = chdir
             os.getcwd = getcwd
             os.unlink = unlink
+            os.environ = environ
+            os.putenv = putenv
+            os.remove = remove
+            os.removedirs = removedirs
+            os.rename = rename
+            os.renames = renames
+            os.chmod = chmod
+            subprocess.Popen = Popen
 
     result = []
     unsafe_execute()

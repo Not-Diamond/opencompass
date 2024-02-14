@@ -1,14 +1,17 @@
+import json
+import random
+import os.path as osp
 from typing import Union
 
 from datasets import Dataset
 
 from opencompass.registry import LOAD_DATASET
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+# from sqlalchemy import create_engine
+# from sqlalchemy.orm import sessionmaker
 
 from notdiamond_server.database import crud
-from notdiamond_server.database.initialize import Base
+# from notdiamond_server.database.initialize import Base
 
 from ..base import BaseDataset
 
@@ -18,22 +21,35 @@ class NDMMLUDataset(BaseDataset):
 
     @staticmethod
     def load(subset: str, db_url: str, size: int, seed: Union[int, str]):
-        engine = create_engine(db_url)
+        random.seed(seed)
+        eval_data_path = osp.join(db_url, f"mmlu.{subset}.json")
 
-        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-        Base.metadata.create_all(bind=engine)
+        samples = crud.get_samples_from_local_dataset(eval_data_path, size, seed)
 
         dataset = []
-        with SessionLocal() as db:
-            db_samples = crud.get_samples_from_dataset(f"mmlu.{subset}", size, db, seed)
+        for sample_id, sample in samples.items():
+            dataset.append({
+                'sample_id': sample_id,
+                'prompt': sample["components"]["prompt"]["prompt"],
+                'query': sample["components"]["query"]["query"],
+                'label': sample["target"]['label'],
+            })
+        # engine = create_engine(db_url)
 
-            for sample in db_samples:
-                dataset.append({
-                    'sample_id': sample.id,
-                    'prompt': sample.components['prompt'].prompt,
-                    'query': sample.components["query"].query,
-                    'label': sample.target['label'],
-                })
+        # SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+        # Base.metadata.create_all(bind=engine)
+
+        # dataset = []
+        # with SessionLocal() as db:
+        #     db_samples = crud.get_samples_from_dataset(f"mmlu.{subset}", size, db, seed)
+
+        #     for sample in db_samples:
+        #         dataset.append({
+        #             'sample_id': sample.id,
+        #             'prompt': sample.components['prompt'].prompt,
+        #             'query': sample.components["query"].query,
+        #             'label': sample.target['label'],
+        #         })
 
         dataset = Dataset.from_list(dataset)
         return dataset

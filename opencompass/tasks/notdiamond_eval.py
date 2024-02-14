@@ -1,4 +1,5 @@
 import os
+import json
 import argparse
 import copy
 import fnmatch
@@ -262,8 +263,60 @@ class NDICLEvalTask(BaseTask):
         mkdir_or_exist(osp.split(out_path)[0])
         mmengine.dump(result, out_path, ensure_ascii=False, indent=4)
 
-        self._save_results_to_db(result, icl_evaluator.metric)
+        # self._save_results_to_db(result, icl_evaluator.metric)
         self._log_eval_success_to_wandb(result, icl_evaluator.metric)
+        self._dump_training_data(result, icl_evaluator.metric)
+
+    def _dump_training_data(self, result: dict, metric: str):
+        assert "db_url" in self.dataset_cfg
+        assert "abbr" in self.model_cfg
+
+        db_url = self.dataset_cfg["db_url"]
+        source = self.dataset_cfg["abbr"]
+        details = result["details"]
+        out_path = get_infer_output_path(self.model_cfg, self.dataset_cfg,
+                                         osp.join(self.work_dir, 'training_data'))
+        eval_data_path = osp.join(db_url, f"{source}.json")
+        with open(eval_data_path) as f:
+            eval_data = json.load(f)
+
+        training_data = {}
+        sample_score = result["sample_score"]
+        assert isinstance(sample_score, list) or isinstance(sample_score, dict)
+        if isinstance(sample_score, list):
+            for i, sample_result in enumerate(sample_score):
+                sample_id = sample_result["sample_id"]
+                assert sample_id not in training_data
+
+                eval_sample = eval_data[sample_id]
+                eval_details = details[f"{i}"]
+                sample_result["metric"] = metric
+                training_data[sample_id] = {
+                    "sample_details": eval_sample,
+                    "eval_details": eval_details,
+                    "result": sample_result
+                }
+
+        elif isinstance(sample_score, dict):
+            for sub, sub_score in sample_score.items():
+                for i, sample_result in enumerate(sub_score):
+                    sample_id = sample_result["sample_id"]
+                    if sample_id in training_data:
+                        eval_sample = eval_data[sample_id]
+                        eval_details = details[f"{i}"]
+                        sample_result["metric"] = f"{metric}.{sub}"
+                        training_data[sample_id]["result"][f"{sub}"] = sample_result
+                    else:
+                        eval_sample = eval_data[sample_id]
+                        eval_details = details[f"{i}"]
+                        sample_result["metric"] = f"{metric}.{sub}"
+                        training_data[sample_id] = {
+                            "sample_details": eval_sample,
+                            "eval_details": eval_details,
+                            "result": {f"{sub}": sample_result}
+                        }
+        mkdir_or_exist(osp.split(out_path)[0])
+        mmengine.dump(training_data, out_path, ensure_ascii=False, indent=4)
 
     def _log_eval_success_to_wandb(self, result: dict, metric: str):
         model = self.model_cfg["abbr"]
@@ -307,6 +360,7 @@ class NDICLEvalTask(BaseTask):
         run.log({"eval_success": eval_success_table})
 
     def _save_results_to_db(self, result: dict, metric: str):
+        raise RuntimeError("This method is deprecated.")
         assert "db_url" in self.dataset_cfg
         assert "abbr" in self.model_cfg
 
@@ -451,6 +505,7 @@ def parse_args():
 
 
 if __name__ == '__main__':
+    import os
     os.environ['WANDB_API_KEY'] = WANDB_API_KEY
     args = parse_args()
     cfg = Config.fromfile(args.config)
