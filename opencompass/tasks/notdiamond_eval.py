@@ -269,8 +269,8 @@ class NDICLEvalTask(BaseTask):
         model = self.model_cfg["abbr"]
         dataset = self.dataset_cfg['abbr']
         timestamp = osp.basename(self.work_dir)
-        run = wandb.init(project=f"LLM Eval - {timestamp}",
-                         name=f"{model}",
+        run = wandb.init(project=f"LLM Eval",
+                         name=f"{model}_{timestamp}",
                          dir=self.work_dir)
         columns = ["sample_id", "dataset", "metric", "success"]
         eval_success_table = wandb.Table(columns=columns)
