@@ -12,7 +12,7 @@ from opencompass.registry import LOAD_DATASET, ICL_EVALUATORS
 # from sqlalchemy import create_engine
 # from sqlalchemy.orm import sessionmaker
 
-# from notdiamond_server.database import crud
+from notdiamond_server.database import crud
 # from notdiamond_server.database.initialize import Base
 
 from ...base import BaseDataset
