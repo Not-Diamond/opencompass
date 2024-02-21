@@ -31,7 +31,8 @@ import wandb
 
 from notdiamond_server.database import crud, schemas
 from notdiamond_server.database.initialize import Base
-from notdiamond_server.config import WANDB_API_KEY, EVALUATIONS_WORK_DIR
+from notdiamond_server.config import WANDB_API_KEY, EVALUATIONS_WORK_DIR, VALID_DATASET_ABBR, WITH_SUBSETS
+
 
 
 def extract_role_pred(s: str, begin_str: Optional[str],
@@ -273,10 +274,15 @@ class NDICLEvalTask(BaseTask):
 
         db_url = self.dataset_cfg["db_url"]
         source = self.dataset_cfg["abbr"]
+        if source[-1].isdigit() and (source[:-2] in VALID_DATASET_ABBR or any([exc in source[:-2] for exc in WITH_SUBSETS])):
+            dataset_name = source[:-2]
+        else:
+            dataset_name = source
+
         details = result["details"]
         out_path = get_infer_output_path(self.model_cfg, self.dataset_cfg,
                                          osp.join(self.work_dir, 'training_data'))
-        eval_data_path = osp.join(db_url, f"{source}.json")
+        eval_data_path = osp.join(db_url, f"{dataset_name}.json")
         with open(eval_data_path) as f:
             eval_data = json.load(f)
 
@@ -322,11 +328,8 @@ class NDICLEvalTask(BaseTask):
         model = self.model_cfg["abbr"]
         dataset = self.dataset_cfg['abbr']
         timestamp = osp.basename(self.work_dir)
-        run = wandb.init(project=f"LLM Eval",
-                         name=f"{model}_{timestamp}",
-                         dir=self.work_dir)
         columns = ["sample_id", "dataset", "metric", "success"]
-        eval_success_table = wandb.Table(columns=columns)
+        failure_found = False
 
         sample_score = result["sample_score"]
         details = result["details"]
@@ -336,28 +339,39 @@ class NDICLEvalTask(BaseTask):
             for i, sample_result in enumerate(sample_score):
                 origin_prediction = details[f"{i}"]["origin_prediction"]
                 if "### No response ###" in origin_prediction:
-                    success = False
-                else:
-                    success = True
+                    if not failure_found:
+                        failure_found = True
+                        run = wandb.init(project=f"LLM Eval",
+                                         name=f"{model}_{timestamp}",
+                                         dir=self.work_dir)
+                        eval_failure_table = wandb.Table(columns=columns)
 
-                eval_success_table.add_data(sample_result['sample_id'],
-                                            dataset,
-                                            metric,
-                                            success)
+                    success = False
+
+                    eval_failure_table.add_data(sample_result['sample_id'],
+                                                dataset,
+                                                metric,
+                                                success)
         elif isinstance(sample_score, dict):
             for sub, sub_score in sample_score.items():
                 for i, sample_result in enumerate(sub_score):
                     origin_prediction = details[f"{i}"]["origin_prediction"]
                     if "### No response ###" in origin_prediction:
-                        success = False
-                    else:
-                        success = True
+                        if not failure_found:
+                            failure_found = True
+                            run = wandb.init(project=f"LLM Eval",
+                                             name=f"{model}_{timestamp}",
+                                             dir=self.work_dir)
+                            eval_failure_table = wandb.Table(columns=columns)
 
-                    eval_success_table.add_data(sample_result['sample_id'],
-                                                dataset,
-                                                f"{metric}.{sub}",
-                                                success)
-        run.log({"eval_success": eval_success_table})
+                        success = False
+
+                        eval_failure_table.add_data(sample_result['sample_id'],
+                                                    dataset,
+                                                    f"{metric}.{sub}",
+                                                    success)
+        if failure_found:
+            run.log({"eval_fail": eval_failure_table})
 
     def _save_results_to_db(self, result: dict, metric: str):
         raise RuntimeError("This method is deprecated.")

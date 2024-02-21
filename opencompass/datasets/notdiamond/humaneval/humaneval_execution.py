@@ -36,20 +36,40 @@ def check_correctness(problem: Dict, completion: str, timeout: float,
             import os
             import shutil
             import subprocess
-            Popen = subprocess.Popen  # type: ignore
             rmtree = shutil.rmtree
-            move = shutil.move
             rmdir = os.rmdir
             chdir = os.chdir
-            getcwd = os.getcwd
-            unlink = os.unlink
-            environ = os.environ
+            fchmod = os.fchmod
+
+            kill = os.kill
+            system = os.system
             putenv = os.putenv
             remove = os.remove
             removedirs = os.removedirs
+            fchdir = os.fchdir
+            setuid = os.setuid
+            fork = os.fork
+            forkpty = os.forkpty
+            killpg = os.killpg
             rename = os.rename
             renames = os.renames
+            truncate = os.truncate
+            replace = os.replace
+            unlink = os.unlink
+            fchown = os.fchown
             chmod = os.chmod
+            chown = os.chown
+            chroot = os.chroot
+            fchdir = os.fchdir
+            lchown = os.lchown
+            getcwd = os.getcwd
+            chdir = os.chdir
+
+            shrmtree = shutil.rmtree
+            shmove = shutil.move
+            shchown = shutil.chown
+
+            subpopen = subprocess.Popen # type: ignore
 
             # Disable functionalities that can make destructive changes to the test.
             reliability_guard()
@@ -84,19 +104,38 @@ def check_correctness(problem: Dict, completion: str, timeout: float,
 
             # Needed for cleaning up.
             shutil.rmtree = rmtree
-            shutil.move = move
             os.rmdir = rmdir
             os.chdir = chdir
-            os.getcwd = getcwd
-            os.unlink = unlink
-            os.environ = environ
+            os.fchmod = fchmod
+
+            os.kill = kill
+            os.system = system
             os.putenv = putenv
             os.remove = remove
             os.removedirs = removedirs
+            os.fchdir = fchdir
+            os.setuid = setuid
+            os.fork = fork
+            os.forkpty = forkpty
+            os.killpg = killpg
             os.rename = rename
             os.renames = renames
+            os.truncate = truncate
+            os.replace = replace
+            os.unlink = unlink
+            os.fchown = fchown
             os.chmod = chmod
-            subprocess.Popen = Popen
+            os.chown = chown
+            os.chroot = chroot
+            os.fchdir = fchdir
+            os.lchown = lchown
+            os.getcwd = getcwd
+
+            shutil.rmtree = shrmtree
+            shutil.move = shmove 
+            shutil.chown = shchown
+
+            subprocess.Popen = subpopen  # type: ignore
 
     result = []
     unsafe_execute()
@@ -305,7 +344,6 @@ def reliability_guard(maximum_memory_bytes: Optional[int] = None):
     os.chown = None
     os.chroot = None
     os.fchdir = None
-    os.lchflags = None
     os.lchmod = None
     os.lchown = None
     os.getcwd = None
