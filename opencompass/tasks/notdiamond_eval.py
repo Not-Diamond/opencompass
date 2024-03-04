@@ -107,8 +107,7 @@ class NDICLEvalTask(BaseTask):
                     'pred_postprocessor', {})
                 for pattern in model_postprocessors.keys():
                     if fnmatch.fnmatch(ds_abbr, pattern):
-                        self.eval_cfg[
-                            'pred_postprocessor'] = model_postprocessors[
+                        self.eval_cfg['pred_postprocessor'] = model_postprocessors[
                                 pattern]  # noqa
                         break
 
@@ -215,12 +214,12 @@ class NDICLEvalTask(BaseTask):
             out_path = get_infer_output_path(
                 self.model_cfg, self.dataset_cfg,
                 osp.join(self.work_dir, 'results'))
-            icl_evaluator._out_dir = osp.splitext(out_path)[
-                0]  # strip extension
+            icl_evaluator._out_dir = osp.splitext(out_path)[0]  # strip extension
 
             preds['predictions'] = pred_strs
             preds['references'] = (test_set[self.output_column]
                                    if self.output_column else None)
+            preds['origin_prompt'] = [p['origin_prompt'] for p in pred_dicts]
             preds['test_set'] = test_set
             preds['sample_ids'] = test_set["sample_id"]
             preds = {

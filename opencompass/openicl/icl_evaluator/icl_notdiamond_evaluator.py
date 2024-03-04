@@ -182,7 +182,7 @@ class NDEMEvaluator(BaseEvaluator):
         self.metric = 'accuracy'
         super().__init__()
 
-    def score(self, predictions, references, sample_ids):
+    def score(self, predictions, references, origin_prompt, sample_ids):
         if len(predictions) != len(references):
             return {
                 'error': 'predictions and references have different '
@@ -198,10 +198,10 @@ class NDEMEvaluator(BaseEvaluator):
         cnt = 0
         details = {}
         sample_accuracy = []
-        for i, (pred, ans, origin_ans, origin_pred, id) in enumerate(zip(predictions, processed_answers,
-                                                                         references, origin_predictions, sample_ids)):
+        for i, (pred, ans, origin_ans, origin_pred, prompt, id) in enumerate(zip(predictions, processed_answers,
+                                                                                 references, origin_predictions, origin_prompt, sample_ids)):
             answers = list(set(ans + origin_ans))
-            detail = {'pred': pred, 'answer': answers, 'origin_prediction': origin_pred}
+            detail = {'prompt': prompt, 'pred': pred, 'answer': answers, 'origin_prediction': origin_pred}
             if pred in ans or pred in origin_ans:
                 cnt += 1
                 detail['correct'] = True
