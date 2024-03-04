@@ -340,9 +340,6 @@ class NDICLEvalTask(BaseTask):
                 if "### No response ###" in origin_prediction:
                     if not failure_found:
                         failure_found = True
-                        run = wandb.init(project=f"LLM Eval",
-                                         name=f"{model}_{timestamp}",
-                                         dir=self.work_dir)
                         eval_failure_table = wandb.Table(columns=columns)
 
                     success = False
@@ -358,9 +355,6 @@ class NDICLEvalTask(BaseTask):
                     if "### No response ###" in origin_prediction:
                         if not failure_found:
                             failure_found = True
-                            run = wandb.init(project=f"LLM Eval",
-                                             name=f"{model}_{timestamp}",
-                                             dir=self.work_dir)
                             eval_failure_table = wandb.Table(columns=columns)
 
                         success = False
@@ -370,7 +364,8 @@ class NDICLEvalTask(BaseTask):
                                                     f"{metric}.{sub}",
                                                     success)
         if failure_found:
-            run.log({"eval_fail": eval_failure_table})
+            with wandb.init(project=f"LLM Eval", name=f"{model}_{timestamp}", dir=self.work_dir) as run:
+                run.log({"eval_fail": eval_failure_table})
 
     def _save_results_to_db(self, result: dict, metric: str):
         raise RuntimeError("This method is deprecated.")
