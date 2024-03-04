@@ -9,11 +9,7 @@ from opencompass.registry import LOAD_DATASET, ICL_EVALUATORS
 from opencompass.openicl.icl_evaluator import BaseEvaluator
 from opencompass.utils.text_postprocessors import general_postprocess
 
-# from sqlalchemy import create_engine
-# from sqlalchemy.orm import sessionmaker
-
-from notdiamond_server.database import crud
-# from notdiamond_server.database.initialize import Base
+from .read_data import get_samples_from_local_dataset
 
 from ..base import BaseDataset
 
@@ -26,7 +22,7 @@ class NDSQuADV2Dataset(BaseDataset):
         random.seed(seed)
         eval_data_path = osp.join(db_url, "squadv2.json")
 
-        samples = crud.get_samples_from_local_dataset(eval_data_path, size, seed)
+        samples = get_samples_from_local_dataset(eval_data_path, size, seed)
 
         dataset = []
         for sample_id, sample in samples.items():

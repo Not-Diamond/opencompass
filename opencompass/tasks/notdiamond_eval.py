@@ -24,14 +24,12 @@ from opencompass.utils import (build_dataset_from_cfg, dataset_abbr_from_cfg,
                                get_infer_output_path, get_logger,
                                task_abbr_from_cfg)
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+# from sqlalchemy import create_engine
+# from sqlalchemy.orm import sessionmaker
 
 import wandb
 
-from notdiamond_server.database import crud, schemas
-from notdiamond_server.database.initialize import Base
-from notdiamond_server.config import WANDB_API_KEY, EVALUATIONS_WORK_DIR, VALID_DATASET_ABBR, WITH_SUBSETS
+from opencompass.config import WANDB_API_KEY, EVALUATIONS_WORK_DIR, VALID_DATASET_ABBR, WITH_SUBSETS
 
 
 
@@ -367,47 +365,47 @@ class NDICLEvalTask(BaseTask):
             with wandb.init(project=f"LLM Eval", name=f"{model}_{timestamp}", dir=self.work_dir) as run:
                 run.log({"eval_fail": eval_failure_table})
 
-    def _save_results_to_db(self, result: dict, metric: str):
-        raise RuntimeError("This method is deprecated.")
-        assert "db_url" in self.dataset_cfg
-        assert "abbr" in self.model_cfg
+    # def _save_results_to_db(self, result: dict, metric: str):
+    #     raise RuntimeError("This method is deprecated.")
+    #     assert "db_url" in self.dataset_cfg
+    #     assert "abbr" in self.model_cfg
 
-        model = self.model_cfg["abbr"]
-        sample_score = result["sample_score"]
-        assert isinstance(sample_score, list) or isinstance(sample_score, dict)
-        # Check if sample_score is a dict and expect each key in dict to be the sub-metric name if so
+    #     model = self.model_cfg["abbr"]
+    #     sample_score = result["sample_score"]
+    #     assert isinstance(sample_score, list) or isinstance(sample_score, dict)
+    #     # Check if sample_score is a dict and expect each key in dict to be the sub-metric name if so
 
-        timestamp = datetime.now()
+    #     timestamp = datetime.now()
 
-        engine = create_engine(self.dataset_cfg["db_url"])
+    #     engine = create_engine(self.dataset_cfg["db_url"])
 
-        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-        Base.metadata.create_all(bind=engine)
+    #     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    #     Base.metadata.create_all(bind=engine)
 
-        with SessionLocal() as db:
-            if isinstance(sample_score, list):
-                for sample_result in sample_score:
-                    eval_result = schemas.EvaluationResultCreate(
-                        sample_id=sample_result['sample_id'],
-                        source=self.dataset_cfg['abbr'],
-                        timestamp=timestamp,
-                        model=model,
-                        metric=metric,
-                        score=sample_result['score']
-                    )
-                    crud.add_evaluation_result(eval_result, db)
-            elif isinstance(sample_score, dict):
-                for sub, sub_score in sample_score.items():
-                    for sample_result in sub_score:
-                        eval_result = schemas.EvaluationResultCreate(
-                            sample_id=sample_result['sample_id'],
-                            source=self.dataset_cfg['abbr'],
-                            timestamp=timestamp,
-                            model=model,
-                            metric=f"{metric}.{sub}",
-                            score=sample_result['score']
-                        )
-                        crud.add_evaluation_result(eval_result, db)
+    #     with SessionLocal() as db:
+    #         if isinstance(sample_score, list):
+    #             for sample_result in sample_score:
+    #                 eval_result = schemas.EvaluationResultCreate(
+    #                     sample_id=sample_result['sample_id'],
+    #                     source=self.dataset_cfg['abbr'],
+    #                     timestamp=timestamp,
+    #                     model=model,
+    #                     metric=metric,
+    #                     score=sample_result['score']
+    #                 )
+    #                 crud.add_evaluation_result(eval_result, db)
+    #         elif isinstance(sample_score, dict):
+    #             for sub, sub_score in sample_score.items():
+    #                 for sample_result in sub_score:
+    #                     eval_result = schemas.EvaluationResultCreate(
+    #                         sample_id=sample_result['sample_id'],
+    #                         source=self.dataset_cfg['abbr'],
+    #                         timestamp=timestamp,
+    #                         model=model,
+    #                         metric=f"{metric}.{sub}",
+    #                         score=sample_result['score']
+    #                     )
+    #                     crud.add_evaluation_result(eval_result, db)
 
     def format_details(self, predictions, references, details, pred_dicts):
         """This function is responsible for formatting prediction details.
