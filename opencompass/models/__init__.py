@@ -30,3 +30,4 @@ from .xunfei_api import XunFei  # noqa: F401
 from .zhipuai_api import ZhiPuAI  # noqa: F401
 
 from .gemini import Gemini
+from .togetherai import TogetherAI
