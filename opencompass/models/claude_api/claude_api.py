@@ -91,27 +91,27 @@ class Claude(BaseAPIModel):
         assert isinstance(input, (str, PromptList))
 
         if isinstance(input, str):
-            messages = f'{self.human_prompt} {input}{self.ai_prompt}'
+            messages = [{"role": "user", "content": input}]
         else:
-            messages = ''
+            messages = []
             for item in input:
                 if item['role'] == 'HUMAN' or item['role'] == 'SYSTEM':
-                    messages += f'{self.human_prompt} {item["prompt"]}'
+                    messages.append({"role": "user", "content": item["prompt"]})
                 elif item['role'] == 'BOT':
-                    messages += f'{self.ai_prompt} {item["prompt"]}'
-            if not messages.endswith(self.ai_prompt):
-                messages += self.ai_prompt
+                    messages.append({"role": "assistant", "content": item["prompt"]})
 
         num_retries = 0
         while num_retries < self.retry:
             self.wait()
             try:
-                completion = self.anthropic.completions.create(
+                completion = self.anthropic.messages.create(
                     model=self.model,
-                    max_tokens_to_sample=max_out_len,
-                    temperature=0.,
-                    prompt=messages)
-                return completion.completion
+                    max_tokens=max_out_len,
+                    temperature=0,
+                    messages=messages
+                )
+                response = completion.content[0].text
+                return response
             except Exception as e:
                 self.logger.error(e)
                 error_msg = str(e)
