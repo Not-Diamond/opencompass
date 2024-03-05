@@ -32,3 +32,4 @@ from .zhipuai_api import ZhiPuAI  # noqa: F401
 from .gemini import Gemini
 from .togetherai import TogetherAI
 from .mistral import MistralAI
+from .cohere import Cohere
