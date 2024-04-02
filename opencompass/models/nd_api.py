@@ -56,6 +56,8 @@ class NotDiamond(BaseAPIModel):
             "togetherai/Phind-CodeLlama-34B-v2",
             "cohere/command",
         ]
+        # self.cache_name = "cache_db" # for BBH
+        self.cache_name = "5dbs"  # for gsm8k, hellaswag, humaneval, math, mmlu
 
         self.nd_llm = NDLLM(llm_providers=llm_providers)
 
@@ -65,7 +67,7 @@ class NotDiamond(BaseAPIModel):
         request_key = hashlib.md5(f"{prompt}".encode()).hexdigest()
 
         # Try to fetch the result from cache first
-        with shelve.open("cache_db") as cache:
+        with shelve.open(self.cache_name) as cache:
             if request_key in cache:
                 print("Result fetched from cache")
                 return cache[request_key]
@@ -73,30 +75,38 @@ class NotDiamond(BaseAPIModel):
         prompt_template = NDPromptTemplate(prompt)
 
         # Call the ND API and check for a valid response
-        try:
-            # After fuzzy hashing the inputs, the best LLM is determined by the ND API and the LLM is called client-side
-            result, session_id, provider = self.nd_llm.invoke(
-                prompt_template=prompt_template
-            )
+        num_retries = 0
+        while num_retries < self.retry:
+            self.wait()
+            try:
+                # After fuzzy hashing the inputs, the best LLM is determined by the ND API and the LLM is called client-side
+                result, session_id, provider = self.nd_llm.invoke(
+                    prompt_template=prompt_template
+                )
 
-            # Check for a valid result (e.g., non-empty content)
-            if not result.content:
-                raise ValueError("Received empty content from the provider")
+                # Check for a valid result (e.g., non-empty content)
+                if not result.content:
+                    raise ValueError("Received empty content from the provider")
 
-            print(f"Session ID: {session_id}")
-            print(f"Provider: {provider.model}")
-            print(f"Result: {result.content}")
+                self.logger.debug(f"Session ID: {session_id}")
+                self.logger.debug(f"Provider: {provider.model}")
+                self.logger.debug(f"Result: {result.content}")
 
-            # Cache the valid result
-            with shelve.open("cache_db") as cache:
-                cache[request_key] = result.content
+                # Cache the valid result
+                with shelve.open(self.cache_name) as cache:
+                    cache[request_key] = result.content
 
-            return result.content
-        except Exception as e:
-            # Handle the case where invoke does not return a valid response
-            print(f"Error: {e}")
-            # Handle the error (e.g., return a default value or re-raise the exception)
-            return "An error occurred. Please try again."
+                return result.content
+
+            except Exception as e:
+                self.logger.error(e)
+                error_msg = str(e)
+            num_retries += 1
+
+        self.logger.error(
+            "Calling Gemini API failed after retrying for "
+            f"{self.retry} times. Check the logs for details."
+        )
 
     def generate(
         self,
@@ -106,15 +116,21 @@ class NotDiamond(BaseAPIModel):
     ) -> List[str]:
         """Generate results given a list of inputs."""
 
-        with ThreadPoolExecutor() as executor:
-            results = list(
-                executor.map(
-                    self._generate,
-                    inputs,
-                    [max_out_len] * len(inputs),
-                    [temperature] * len(inputs),
-                )
-            )
+        # with ThreadPoolExecutor() as executor:
+        #     results = list(
+        #         executor.map(
+        #             self._generate,
+        #             inputs,
+        #             [max_out_len] * len(inputs),
+        #             [temperature] * len(inputs),
+        #         )
+        #     )
+
+        # For loop instead of ThreadPoolExecutor
+        results = []
+        for inp in inputs:
+            results.append(self._generate(inp, max_out_len, temperature))
+
         self.flush()
         return results
 
