@@ -61,42 +61,18 @@ class NotDiamond(BaseAPIModel):
 
     def _generate(self, prompt: str, max_out_len: int, temperature: float) -> str:
         """Generate results given an input."""
-        # Create a unique key for the request
-        request_key = hashlib.md5(f"{prompt}".encode()).hexdigest()
-
-        # Try to fetch the result from cache first
-        with shelve.open("cache_db") as cache:
-            if request_key in cache:
-                print("Result fetched from cache")
-                return cache[request_key]
-
         prompt_template = NDPromptTemplate(prompt)
 
-        # Call the ND API and check for a valid response
-        try:
-            # After fuzzy hashing the inputs, the best LLM is determined by the ND API and the LLM is called client-side
-            result, session_id, provider = self.nd_llm.invoke(
-                prompt_template=prompt_template
-            )
+        # After fuzzy hashing the inputs, the best LLM is determined by the ND API and the LLM is called client-side
+        result, session_id, provider = self.nd_llm.invoke(
+            prompt_template=prompt_template
+        )
 
-            # Check for a valid result (e.g., non-empty content)
-            if not result.content:
-                raise ValueError("Received empty content from the provider")
+        print(f"Session ID: {session_id}")
+        print(f"Provider: {provider.model}")
+        print(f"Result: {result.content}")
 
-            print(f"Session ID: {session_id}")
-            print(f"Provider: {provider.model}")
-            print(f"Result: {result.content}")
-
-            # Cache the valid result
-            with shelve.open("cache_db") as cache:
-                cache[request_key] = result.content
-
-            return result.content
-        except Exception as e:
-            # Handle the case where invoke does not return a valid response
-            print(f"Error: {e}")
-            # Handle the error (e.g., return a default value or re-raise the exception)
-            return "An error occurred. Please try again."
+        return result.content
 
     def generate(
         self,
