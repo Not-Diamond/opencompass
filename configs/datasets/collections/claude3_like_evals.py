@@ -9,4 +9,6 @@ with read_base():
     from ..math.math_gen_265cce import math_datasets
     from ..mmlu.mmlu_gen_4d595a import mmlu_datasets
 
+    # Remaining 8 datasets - GPQA Diamond, MGSM,DROP,PubMedQA, WinoGrande, 🧭 APPS,  MBPP, 🧭
+
 datasets = sum((v for k, v in locals().items() if k.endswith("_datasets")), [])

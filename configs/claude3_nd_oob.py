@@ -1,6 +1,6 @@
 from mmengine.config import read_base
 
-from opencompass.models import NotDiamond
+from opencompass.models import NotDiamond, NotDiamondModelSelect
 
 with read_base():
 
@@ -11,7 +11,7 @@ with read_base():
 models = [
     dict(
         abbr="nd_oob",
-        type=NotDiamond,
+        type=NotDiamondModelSelect,  # NotDiamondModelSelect, NotDiamond
         path="N/A",
         key="your keys",  # The key will be obtained from Environment, but you can write down your key here as well
         url="your url",
