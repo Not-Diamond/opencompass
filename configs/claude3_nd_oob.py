@@ -1,6 +1,9 @@
 from mmengine.config import read_base
 
 from opencompass.models import NotDiamond, NotDiamondModelSelect
+from opencompass.partitioners import SizePartitioner
+from opencompass.runners import LocalRunner
+from opencompass.tasks import OpenICLInferTask
 
 with read_base():
 
@@ -22,3 +25,8 @@ models = [
         temperature=1,
     )
 ]
+
+infer = dict(
+    partitioner=dict(type=SizePartitioner, max_task_size=1000),
+    runner=dict(type=LocalRunner, max_num_workers=10, task=dict(type=OpenICLInferTask)),
+)
