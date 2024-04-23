@@ -6,6 +6,7 @@ from typing import List
 import evaluate
 import numpy as np
 
+from opencompass.datasets.math import MATHEvaluator
 from opencompass.registry import ICL_EVALUATORS
 from opencompass.utils.text_postprocessors import general_postprocess
 
@@ -24,7 +25,7 @@ class NDAccEvaluator(BaseEvaluator):
     """
 
     def __init__(self, seed: int = 0) -> None:
-        self.metric = 'accuracy'
+        self.metric = "accuracy"
         self.seed = seed
         super().__init__()
 
@@ -39,8 +40,7 @@ class NDAccEvaluator(BaseEvaluator):
             dict: preprocessed results.
         """
         mapping_to_int_dict = {
-            label: idx
-            for idx, label in enumerate(set(map(str, references)))
+            label: idx for idx, label in enumerate(set(map(str, references)))
         }
         pred_set = set(predictions)
         for pred in pred_set:
@@ -49,8 +49,8 @@ class NDAccEvaluator(BaseEvaluator):
         golds = [mapping_to_int_dict[str(gold)] for gold in references]
         preds = [mapping_to_int_dict[str(pred)] for pred in predictions]
         return {
-            'predictions': preds,
-            'references': golds,
+            "predictions": preds,
+            "references": golds,
         }
 
     def _postprocess(self, scores: dict) -> dict:
@@ -62,17 +62,16 @@ class NDAccEvaluator(BaseEvaluator):
         Returns:
             dict: postprocessed scores.
         """
-        scores['accuracy'] *= 100
+        scores["accuracy"] *= 100
         return scores
 
-    def _compute_sample_accuracy(self, predictions: List, references: List, sample_ids: List) -> dict:
+    def _compute_sample_accuracy(
+        self, predictions: List, references: List, sample_ids: List
+    ) -> dict:
         sample_accuracy = []
         for pred, ref, id in zip(predictions, references, sample_ids):
-            score = 1. if pred == ref else 0.
-            sample_result = {
-                "sample_id": id,
-                "score": score
-            }
+            score = 1.0 if pred == ref else 0.0
+            sample_result = {"sample_id": id, "score": score}
             sample_accuracy.append(sample_result)
         return {"sample_score": sample_accuracy}
 
@@ -93,14 +92,16 @@ class NDAccEvaluator(BaseEvaluator):
         np.random.seed(self.seed)
         if len(predictions) != len(references):
             return {
-                'error':
-                'predictions and references have different '
-                f'length. len(predictions): {len(predictions)}, '
-                f'len(references): {len(references)}'
+                "error": "predictions and references have different "
+                f"length. len(predictions): {len(predictions)}, "
+                f"len(references): {len(references)}"
             }
         # use codes pre-downloaded to opencompass repo, avoid downloading
-        local_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                  'hf_metrics', self.metric + '.py')
+        local_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "hf_metrics",
+            self.metric + ".py",
+        )
         if os.path.exists(local_path):
             metric = evaluate.load(local_path)
         else:
@@ -109,7 +110,9 @@ class NDAccEvaluator(BaseEvaluator):
         preprocessed = self._preprocess(predictions, references)
 
         scores = metric.compute(**preprocessed)
-        sample_accuracy = self._compute_sample_accuracy(**preprocessed, sample_ids=sample_ids)
+        sample_accuracy = self._compute_sample_accuracy(
+            **preprocessed, sample_ids=sample_ids
+        )
 
         scores = {**scores, **sample_accuracy}
         result = self._postprocess(scores)
@@ -140,6 +143,7 @@ class NDEDAccEvaluator(NDAccEvaluator):
     def __init__(self) -> None:
         super().__init__()
         from rapidfuzz.distance import Levenshtein
+
         self.dist = Levenshtein.distance
 
     def _preprocess(self, predictions: List, references: List) -> dict:
@@ -159,18 +163,18 @@ class NDEDAccEvaluator(NDAccEvaluator):
         for i in range(len(predictions)):
             pred, ref = predictions[i], references[i]
             dists = []
-            for cands in ref['candidates']:
+            for cands in ref["candidates"]:
                 if isinstance(cands, str):
                     d = self.dist(pred, cands)
                 else:
                     d = np.min([self.dist(pred, cand) for cand in cands])
                 dists.append(d)
             preds.append(np.argmin(dists))
-            golds.append(ref['label'])
+            golds.append(ref["label"])
 
         return {
-            'predictions': preds,
-            'references': golds,
+            "predictions": preds,
+            "references": golds,
         }
 
 
@@ -179,47 +183,51 @@ class NDEMEvaluator(BaseEvaluator):
     """Exact match evaluator."""
 
     def __init__(self) -> None:
-        self.metric = 'accuracy'
+        self.metric = "accuracy"
         super().__init__()
 
     def score(self, predictions, references, origin_prompt, sample_ids):
         if len(predictions) != len(references):
-            return {
-                'error': 'predictions and references have different '
-                'length'
-            }
+            return {"error": "predictions and references have different " "length"}
         origin_predictions = copy.deepcopy(predictions)
-        predictions = [
-            general_postprocess(prediction) for prediction in predictions
-        ]
-        processed_answers = [[general_postprocess(j) for j in i]
-                             for i in references]
+        predictions = [general_postprocess(prediction) for prediction in predictions]
+        processed_answers = [[general_postprocess(j) for j in i] for i in references]
 
         cnt = 0
         details = {}
         sample_accuracy = []
-        for i, (pred, ans, origin_ans, origin_pred, prompt, id) in enumerate(zip(predictions, processed_answers,
-                                                                                 references, origin_predictions, origin_prompt, sample_ids)):
+        for i, (pred, ans, origin_ans, origin_pred, prompt, id) in enumerate(
+            zip(
+                predictions,
+                processed_answers,
+                references,
+                origin_predictions,
+                origin_prompt,
+                sample_ids,
+            )
+        ):
             answers = list(set(ans + origin_ans))
-            detail = {'prompt': prompt, 'pred': pred, 'answer': answers, 'origin_prediction': origin_pred}
+            detail = {
+                "prompt": prompt,
+                "pred": pred,
+                "answer": answers,
+                "origin_prediction": origin_pred,
+            }
             if pred in ans or pred in origin_ans:
                 cnt += 1
-                detail['correct'] = True
-                score = 1.
+                detail["correct"] = True
+                score = 1.0
             else:
-                detail['correct'] = False
-                score = 0.
+                detail["correct"] = False
+                score = 0.0
 
-            sample_result = {
-                "sample_id": id,
-                "score": score
-            }
+            sample_result = {"sample_id": id, "score": score}
             sample_accuracy.append(sample_result)
             details[f"{i}"] = detail
 
         score = cnt / len(predictions) * 100
 
-        return {'score': score, 'details': details, 'sample_score': sample_accuracy}
+        return {"score": score, "details": details, "sample_score": sample_accuracy}
 
 
 @ICL_EVALUATORS.register_module()
@@ -230,7 +238,7 @@ class NDRougeEvaluator(BaseEvaluator):
     """
 
     def __init__(self, seed: int = 0) -> None:
-        self.metric = 'rouge'
+        self.metric = "rouge"
         self.seed = seed
         super().__init__()
 
@@ -245,8 +253,8 @@ class NDRougeEvaluator(BaseEvaluator):
             dict: preprocessed results.
         """
         return {
-            'predictions': predictions,
-            'references': references,
+            "predictions": predictions,
+            "references": references,
         }
 
     def _postprocess(self, scores: dict) -> dict:
@@ -266,10 +274,7 @@ class NDRougeEvaluator(BaseEvaluator):
         for k, v in scores.items():
             sample_accuracy = []
             for id, s in zip(sample_ids, v):
-                sample_result = {
-                    "sample_id": id,
-                    "score": s
-                }
+                sample_result = {"sample_id": id, "score": s}
                 sample_accuracy.append(sample_result)
             sample_scores[k] = sample_accuracy
         return {"sample_score": sample_scores}
@@ -292,14 +297,16 @@ class NDRougeEvaluator(BaseEvaluator):
         np.random.seed(self.seed)
         if len(predictions) != len(references):
             return {
-                'error':
-                'predictions and references have different '
-                f'length. len(predictions): {len(predictions)}, '
-                f'len(references): {len(references)}'
+                "error": "predictions and references have different "
+                f"length. len(predictions): {len(predictions)}, "
+                f"len(references): {len(references)}"
             }
         # use codes pre-downloaded to opencompass repo, avoid downloading
-        local_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                  'hf_metrics', self.metric + '.py')
+        local_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "hf_metrics",
+            self.metric + ".py",
+        )
         if os.path.exists(local_path):
             metric = evaluate.load(local_path)
         else:
@@ -316,3 +323,32 @@ class NDRougeEvaluator(BaseEvaluator):
         random.setstate(random_state)
         np.random.set_state(np_random_state)
         return result
+
+
+@ICL_EVALUATORS.register_module()
+class NDMATHEvaluator(MATHEvaluator):
+
+    def __init__(self, *args, **kwargs):
+        super(NDMATHEvaluator, self).__init__(*args, **kwargs
+        self.metric = 'accuracy'
+
+    def score(self, predictions, references, sample_ids: List[str]):
+        """
+        Calculate sample-level scores (instead of averaged scores) for math
+        """
+        if len(predictions) != len(references):
+            return {"error": "predictions and references have different " "length"}
+
+        results = []
+
+        for sample_id, pred, ref in zip(sample_ids, predictions, references):
+            if self.is_equiv(pred, ref):
+                score = 1.0
+            else:
+                score = 0.0
+            results.append(
+                {"sample_id": sample_id, "score": score}
+            )
+        
+        return results
+
