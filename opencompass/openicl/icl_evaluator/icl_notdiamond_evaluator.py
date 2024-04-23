@@ -342,7 +342,7 @@ class NDMATHEvaluator(MATHEvaluator):
         results = []
 
         for sample_id, pred, ref in zip(sample_ids, predictions, references):
-            if self.is_equal(pred, ref):
+            if self.is_equiv(pred, ref):
                 score = 1.0
             else:
                 score = 0.0
