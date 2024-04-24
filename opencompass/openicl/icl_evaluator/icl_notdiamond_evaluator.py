@@ -329,8 +329,8 @@ class NDRougeEvaluator(BaseEvaluator):
 class NDMATHEvaluator(MATHEvaluator):
 
     def __init__(self, *args, **kwargs):
-        super(NDMATHEvaluator, self).__init__(*args, **kwargs
-        self.metric = 'accuracy'
+        super(NDMATHEvaluator, self).__init__(*args, **kwargs)
+        self.metric = "accuracy"
 
     def score(self, predictions, references, sample_ids: List[str]):
         """
@@ -346,9 +346,6 @@ class NDMATHEvaluator(MATHEvaluator):
                 score = 1.0
             else:
                 score = 0.0
-            results.append(
-                {"sample_id": sample_id, "score": score}
-            )
-        
-        return results
+            results.append({"sample_id": sample_id, "score": score})
 
+        return results
