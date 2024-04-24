@@ -123,6 +123,14 @@ class NDAccEvaluator(BaseEvaluator):
 
 
 @ICL_EVALUATORS.register_module()
+class NDMgsmEvaluator(NDAccEvaluator):
+    def score(self, predictions: List, references: List, sample_ids: List) -> dict:
+        numeric_preds = [int(pred) for pred in predictions]
+        numeric_references = [int(ref) for ref in references]
+        super().score(numeric_preds, numeric_references, sample_ids)
+
+
+@ICL_EVALUATORS.register_module()
 class NDEDAccEvaluator(NDAccEvaluator):
     """Edit distance based accuracy evaluator.
 
