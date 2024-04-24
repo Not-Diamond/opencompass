@@ -4,14 +4,14 @@ import os
 
 from datasets import Dataset
 
-from opencompass.openicl import BaseEvaluator
+from opencompass.openicl.icl_evaluator import NDAccEvaluator
 from opencompass.registry import LOAD_DATASET
 
 from .base import BaseDataset
 
 
 @LOAD_DATASET.register_module()
-class GPQADataset(BaseDataset):
+class NDGPQADataset(BaseDataset):
 
     @staticmethod
     def load(path: str, name: str):
@@ -62,20 +62,5 @@ class GPQADataset(BaseDataset):
         return dataset
 
 
-class GPQAEvaluator(BaseEvaluator):
-
-    def score(self, predictions, references):
-        if len(predictions) != len(references):
-            return {"error": "predictions and references have different length"}
-        correct = 0
-        count = 0
-        details = []
-        for i, j in zip(predictions, references):
-            detail = {"pred": i, "answer": j, "correct": False}
-            count += 1
-            if i == j:
-                correct += 1
-                detail["correct"] = True
-            details.append(detail)
-        result = {"accuracy": 100 * correct / count, "details": details}
-        return result
+class NDGPQAEvaluator(NDAccEvaluator):
+    pass
