@@ -7,7 +7,7 @@ from datasets import Dataset
 from opencompass.openicl.icl_evaluator import NDAccEvaluator
 from opencompass.registry import LOAD_DATASET
 
-from .base import BaseDataset
+from ..base import BaseDataset
 
 
 @LOAD_DATASET.register_module()
