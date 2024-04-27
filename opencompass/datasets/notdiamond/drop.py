@@ -1,4 +1,6 @@
 import json
+import os.path as osp
+import random
 
 from datasets import Dataset, DatasetDict
 
@@ -26,8 +28,9 @@ class NDDropDataset(BaseDataset):
         return answers
 
     @staticmethod
-    def load(path, only_number=True):
-        with open(path, "r", encoding="utf-8") as f:
+    def load(db_url: str, size: int, seed: int, only_number: bool = True):
+        eval_data_path = osp.join(db_url, "math.json")
+        with open(eval_data_path, "r", encoding="utf-8") as f:
             lines = json.load(f)
         dataset_list = []
         for line in lines.values():
@@ -42,5 +45,8 @@ class NDDropDataset(BaseDataset):
                 }
                 dataset_list.append(item)
 
+        random.seed(seed)
+        size = min(size, len(dataset_list))
+        dataset_list = random.sample(dataset_list, size)
         dataset_list = Dataset.from_list(dataset_list)
         return DatasetDict({"validation": dataset_list})

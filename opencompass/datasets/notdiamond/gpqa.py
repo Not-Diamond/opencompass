@@ -1,6 +1,7 @@
 import copy
 import csv
-import os
+import os.path as osp
+import random
 
 from datasets import Dataset
 
@@ -14,11 +15,12 @@ from ..base import BaseDataset
 class NDGPQADataset(BaseDataset):
 
     @staticmethod
-    def load(path: str, name: str):
+    def load(db_url: str, size: int, seed: int):
         cnt = 0
         data = []
         data_new = []
-        with open(os.path.join(path, name), "r", encoding="utf-8") as f:
+        eval_data_path = osp.join(db_url, "gpqa_diamond.csv")
+        with open(eval_data_path, "r", encoding="utf-8") as f:
             reader = csv.reader(f, delimiter=",")
             for row in reader:
                 if row[7] == "Question":
@@ -57,6 +59,9 @@ class NDGPQADataset(BaseDataset):
                         break
                 data_new.append(line)
 
+        random.seed(seed)
+        size = min(size, len(data_new))
+        data_new = random.sample(data_new, size)
         dataset = Dataset.from_list(data_new)
 
         return dataset

@@ -127,7 +127,7 @@ class NDMgsmEvaluator(NDAccEvaluator):
     def score(self, predictions: List, references: List, sample_ids: List) -> dict:
         numeric_preds = [int(pred) for pred in predictions]
         numeric_references = [int(ref) for ref in references]
-        super().score(numeric_preds, numeric_references, sample_ids)
+        return super().score(numeric_preds, numeric_references, sample_ids)
 
 
 @ICL_EVALUATORS.register_module()
@@ -340,7 +340,7 @@ class NDMATHEvaluator(MATHEvaluator):
         super(NDMATHEvaluator, self).__init__(*args, **kwargs)
         self.metric = "accuracy"
 
-    def score(self, predictions, references, sample_ids: List[str]):
+    def score(self, predictions, references, sample_ids: List[str]) -> dict:
         """
         Calculate sample-level scores (instead of averaged scores) for math
         """
@@ -356,4 +356,4 @@ class NDMATHEvaluator(MATHEvaluator):
                 score = 0.0
             results.append({"sample_id": sample_id, "score": score})
 
-        return results
+        return {"sample_score": results}
