@@ -7,6 +7,7 @@ from datasets import Dataset, DatasetDict
 from opencompass.registry import LOAD_DATASET
 
 from ..base import BaseDataset
+from .read_data import get_samples_from_local_dataset
 
 
 @LOAD_DATASET.register_module()
@@ -28,25 +29,22 @@ class NDDropDataset(BaseDataset):
         return answers
 
     @staticmethod
-    def load(db_url: str, size: int, seed: int, only_number: bool = True):
-        eval_data_path = osp.join(db_url, "math.json")
-        with open(eval_data_path, "r", encoding="utf-8") as f:
-            lines = json.load(f)
-        dataset_list = []
-        for line in lines.values():
-            for qa_pair in line["qa_pairs"]:
-                validated_answers = qa_pair["validated_answers"]
-                if only_number and not any(i["number"] for i in validated_answers):
-                    continue
-                item = {
-                    "prompt": line["passage"],
-                    "question": qa_pair["question"],
-                    "answers": NDDropDataset.get_answers(validated_answers),
-                }
-                dataset_list.append(item)
-
+    def load(db_url: str, size: int, seed: int | str):
         random.seed(seed)
-        size = min(size, len(dataset_list))
-        dataset_list = random.sample(dataset_list, size)
-        dataset_list = Dataset.from_list(dataset_list)
-        return DatasetDict({"validation": dataset_list})
+        eval_data_path = osp.join(db_url, "mgsm.json")
+
+        samples = get_samples_from_local_dataset(eval_data_path, size, seed)
+
+        dataset = []
+        for sample_id, sample in samples.items():
+            dataset.append(
+                {
+                    "sample_id": sample_id,
+                    "context": sample["components"]["context"]["context"],
+                    "query": sample["components"]["query"]["query"],
+                    "label": sample["target"]["label"],
+                }
+            )
+
+        dataset = Dataset.from_list(dataset)
+        return dataset
