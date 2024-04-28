@@ -25,7 +25,6 @@ class NDMgsmDataset(BaseDataset):
             dataset.append(
                 {
                     "sample_id": sample_id,
-                    "context": sample["components"]["context"]["context"],
                     "query": sample["components"]["query"]["query"],
                     "label": sample["target"]["label"],
                 }
