@@ -31,7 +31,7 @@ class NDDropDataset(BaseDataset):
     @staticmethod
     def load(db_url: str, size: int, seed: int | str):
         random.seed(seed)
-        eval_data_path = osp.join(db_url, "mgsm.json")
+        eval_data_path = osp.join(db_url, "drop.json")
 
         samples = get_samples_from_local_dataset(eval_data_path, size, seed)
 
