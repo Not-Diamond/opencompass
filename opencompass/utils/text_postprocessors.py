@@ -153,11 +153,10 @@ def last_number_postprocess(text: str) -> float:
     pattern = r" (-?\d*\.?\d+)"
 
     # search the string for the pattern
-    match = re.search(pattern, text)
+    matches = re.findall(pattern, text)
 
     # if a match is found, return it. Otherwise, return None.
-    groups = match.groups()
-    return float(groups[-1]) if match else None
+    return float(matches[-1]) if matches else None
 
 
 @TEXT_POSTPROCESSORS.register_module("multiple-select")
