@@ -194,12 +194,20 @@ class NDEMEvaluator(BaseEvaluator):
         self.metric = "accuracy"
         super().__init__()
 
+    def _get_processed_answers(self, references):
+        return [[general_postprocess(j) for j in i] for i in references]
+
     def score(self, predictions, references, origin_prompt, sample_ids):
         if len(predictions) != len(references):
             return {"error": "predictions and references have different " "length"}
         origin_predictions = copy.deepcopy(predictions)
+        print(f"predictions {predictions} references {references}")
         predictions = [general_postprocess(prediction) for prediction in predictions]
-        processed_answers = [[general_postprocess(j) for j in i] for i in references]
+        processed_answers = self._get_processed_answers(references)
+        if len(references) != len(processed_answers):
+            raise AssertionError(
+                f"NDEMEvaluator expected postprocessing of {references} to produce the same # of answers, but found {processed_answers} instead."
+            )
 
         cnt = 0
         details = {}
@@ -214,14 +222,22 @@ class NDEMEvaluator(BaseEvaluator):
                 sample_ids,
             )
         ):
-            answers = list(set(ans + origin_ans))
+            try:
+                answers = list(set(ans + origin_ans))
+            except TypeError as terr:
+                if isinstance(ans, list) and isinstance(origin_ans, str):
+                    answers = list(set(ans + [origin_ans]))
+                elif isinstance(ans, str) and isinstance(origin_ans, list):
+                    answers = list(set([ans] + origin_ans))
+                else:
+                    raise terr
             detail = {
                 "prompt": prompt,
                 "pred": pred,
                 "answer": answers,
                 "origin_prediction": origin_pred,
             }
-            if pred in ans or pred in origin_ans:
+            if self._check_answer_match(pred, ans, origin_ans):
                 cnt += 1
                 detail["correct"] = True
                 score = 1.0
@@ -236,6 +252,9 @@ class NDEMEvaluator(BaseEvaluator):
         score = cnt / len(predictions) * 100
 
         return {"score": score, "details": details, "sample_score": sample_accuracy}
+
+    def _check_answer_match(self, pred, ans, origin_ans) -> bool:
+        return pred in ans or pred in origin_ans
 
 
 @ICL_EVALUATORS.register_module()
@@ -357,3 +376,20 @@ class NDMATHEvaluator(MATHEvaluator):
             results.append({"sample_id": sample_id, "score": score})
 
         return {"sample_score": results}
+
+
+class NDDropEvaluator(NDEMEvaluator):
+    """
+    Change scoring fn in NDEMEvaluator to check whether the answer is referenced
+    in the LLM prediction.
+    """
+
+    def _check_answer_match(self, pred, ans, origin_ans) -> bool:
+        answers_found = [
+            answer in pred or origin_answer in pred
+            for (answer, origin_answer) in zip(ans, origin_ans)
+        ]
+        return all(answers_found)
+
+    def _get_processed_answers(self, references):
+        return [general_postprocess(p) for mylist in references for p in mylist]
