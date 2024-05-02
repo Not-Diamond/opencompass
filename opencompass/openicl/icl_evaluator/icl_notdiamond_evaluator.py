@@ -378,6 +378,7 @@ class NDMATHEvaluator(MATHEvaluator):
         return {"sample_score": results}
 
 
+@ICL_EVALUATORS.register_module()
 class NDDropEvaluator(NDEMEvaluator):
     """
     Change scoring fn in NDEMEvaluator to check whether the answer is referenced
@@ -390,6 +391,3 @@ class NDDropEvaluator(NDEMEvaluator):
             for (answer, origin_answer) in zip(ans, origin_ans)
         ]
         return all(answers_found)
-
-    def _get_processed_answers(self, references):
-        return [general_postprocess(p) for mylist in references for p in mylist]
