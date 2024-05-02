@@ -150,7 +150,7 @@ def first_number_postprocess(text: str) -> float:
 def last_number_postprocess(text: str) -> float:
     """Return the last number in a string."""
     # regex pattern to match numbers (both integers and decimals)
-    pattern = r" (-?\d*\.?\d+)"
+    pattern = r"(-?\d*\.?\d+)"
 
     # search the string for the pattern
     matches = re.findall(pattern, text)
