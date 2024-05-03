@@ -1,3 +1,4 @@
+import logging
 import os
 import copy
 import random
@@ -6,11 +7,13 @@ from typing import List
 import evaluate
 import numpy as np
 
-from opencompass.datasets.math import MATHEvaluator
 from opencompass.registry import ICL_EVALUATORS
 from opencompass.utils.text_postprocessors import general_postprocess
 
 from .icl_base_evaluator import BaseEvaluator
+
+LOGGER = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 @ICL_EVALUATORS.register_module()
@@ -125,8 +128,14 @@ class NDAccEvaluator(BaseEvaluator):
 @ICL_EVALUATORS.register_module()
 class NDMgsmEvaluator(NDAccEvaluator):
     def score(self, predictions: List, references: List, sample_ids: List) -> dict:
-        numeric_preds = [int(pred) for pred in predictions]
-        numeric_references = [int(ref) for ref in references]
+        try:
+            numeric_preds = [int(pred) if pred else 0 for pred in predictions]
+            numeric_references = [int(ref.replace(",", "")) for ref in references]
+        except TypeError as terr:
+            LOGGER.error(f"Error converting predictions and references to numeric.")
+            LOGGER.error(f"PREDICTIONS: \n{predictions}")
+            LOGGER.error(f"REFERENCES: \n{references}")
+            raise terr
         return super().score(numeric_preds, numeric_references, sample_ids)
 
 
