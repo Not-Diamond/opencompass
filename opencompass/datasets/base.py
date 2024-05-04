@@ -36,7 +36,7 @@ class BaseDataset:
         Take a file path to training samples for OOB, load them and identify previously-prompted samples.
         Do not re-prompt these samples.
         """
-        logger = get_logger(log_level="DEBUG")
+        logger = get_logger(log_level="INFO")
         model_to_denylist = {}
         for dirpath, dirnames, filenames in os.walk(training_path, topdown=False):
             if len(dirnames) > 0:
