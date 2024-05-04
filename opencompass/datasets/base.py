@@ -36,26 +36,24 @@ class BaseDataset:
         Take a file path to training samples for OOB, load them and identify previously-prompted samples.
         Do not re-prompt these samples.
         """
-        logger = get_logger(log_level="INFO")
+        logger = get_logger(log_level="DEBUG")
         model_to_denylist = {}
-        for entry in os.scandir(training_path):
-            for model in os.scandir(entry.path):
+        for dirpath, dirnames, filenames in os.walk(training_path, topdown=False):
+            if len(dirnames) > 0:
+                # We've exhausted all dirs, we're done
+                break
 
-                if not model.is_dir():
-                    logger.debug(f"Skipping non-directory model {model.path}")
+            for filename in filenames:
+                # Skip files for other training datasets
+                if dataset_abbr not in filename:
                     continue
 
-                for eval_dataset in os.scandir(model.path):
-                    if dataset_abbr not in eval_dataset.name:
-                        logger.debug(
-                            f"Skipping dataset file {eval_dataset.path} - not a {dataset_abbr} file."
-                        )
-                        continue
+                _, model_name = os.path.split(dirpath)
 
-                    with open(eval_dataset.path) as f:
-                        sample_data = json.load(f)
-                        if "denylist" in sample_data:
-                            model_to_denylist[model.name] = sample_data["denylist"]
+                with open(f"{dirpath}/{filename}", "r") as f:
+                    sample_data = json.load(f)
+                    if "denylist" in sample_data:
+                        model_to_denylist[model_name] = sample_data["denylist"]
 
         logger.info(
             f"Identified denylist samples for {dataset_abbr} datasets: {model_to_denylist}"
