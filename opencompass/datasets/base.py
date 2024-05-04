@@ -35,6 +35,12 @@ class BaseDataset:
         """
         Take a file path to training samples for OOB, load them and identify previously-prompted samples.
         Do not re-prompt these samples.
+
+        Usage instructions:
+        1. For each eval dataset, call this method on the training directory
+        2. Write the model-to-denylist mapping to the eval dataset file in the training directory
+        3. Reference the denylist in `read_data.get_samples_from_local_dataset` to avoid re-prompting
+
         """
         logger = get_logger(log_level="INFO")
         model_to_denylist = {}
@@ -52,8 +58,7 @@ class BaseDataset:
 
                 with open(f"{dirpath}/{filename}", "r") as f:
                     sample_data = json.load(f)
-                    if "denylist" in sample_data:
-                        model_to_denylist[model_name] = sample_data["denylist"]
+                    model_to_denylist[model_name] = list(sample_data.keys())
 
         logger.info(
             f"Identified denylist samples for {dataset_abbr} datasets: {model_to_denylist}"
