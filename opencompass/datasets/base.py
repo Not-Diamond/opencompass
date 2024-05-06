@@ -58,9 +58,9 @@ class BaseDataset:
 
                 with open(f"{dirpath}/{filename}", "r") as f:
                     sample_data = json.load(f)
-                    model_to_denylist[model_name] = list(sample_data.keys())
+                    model_to_denylist[model_name] = list(set(sample_data.keys()))
 
         logger.info(
-            f"Identified denylist samples for {dataset_abbr} datasets: {model_to_denylist}"
+            f"Identified denylist samples for {dataset_abbr} datasets across {len(model_to_denylist)} models."
         )
         return model_to_denylist

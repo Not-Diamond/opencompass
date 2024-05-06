@@ -362,7 +362,7 @@ class NDRougeEvaluator(BaseEvaluator):
 
 
 @ICL_EVALUATORS.register_module()
-class NDMATHEvaluator(MATHEvaluator):
+class NDMATHEvaluator(BaseEvaluator):
 
     def __init__(self, *args, **kwargs):
         super(NDMATHEvaluator, self).__init__(*args, **kwargs)
