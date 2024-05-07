@@ -400,3 +400,95 @@ class NDDropEvaluator(NDEMEvaluator):
             for (answer, origin_answer) in zip(ans, origin_ans)
         ]
         return all(answers_found)
+
+
+@ICL_EVALUATORS.register_module()
+class NDBleuEvaluator(BaseEvaluator):
+    """Bleu evaluator."""
+
+    def __init__(self, seed: int = 0) -> None:
+        self.metric = "sacrebleu"
+        self.seed = seed
+        super().__init__()
+
+    def _preprocess(self, predictions: List, references: List) -> dict:
+        """Preprocess the final predictions and references to needed format.
+
+        Args:
+            predictions (List): List of predictions of each sample.
+            references (List): List of targets for each sample.
+
+        Returns:
+            dict: preprocessed results.
+        """
+        return {
+            'predictions': predictions,
+            'references': references,
+        }
+
+    def _postprocess(self, scores: dict) -> dict:
+        """Postprocess for final scores.
+
+        Args:
+            scores (dict): Dict of calculated scores of metrics.
+
+        Returns:
+            dict: postprocessed scores.
+        """
+        return scores
+
+    def _compute_sample_accuracy(
+        self, predictions: List, references: List, sample_ids: List, metric: evaluate
+    ) -> dict:
+        sample_accuracy = []
+        for pred, ref, id in zip(predictions, references, sample_ids):
+            score = metric.compute(**{"predictions": [pred,], "references": [ref,]})
+            sample_result = {"sample_id": id, "score": score["score"]}
+            sample_accuracy.append(sample_result)
+        return {"sample_score": sample_accuracy}
+
+    def score(self, predictions: List, references: List, sample_ids: List) -> dict:
+        """Calculate scores.
+
+        Args:
+            predictions (List): List of predictions of each sample.
+            references (List): List of targets for each sample.
+
+        Returns:
+            dict: calculated scores.
+        """
+        random_state = random.getstate()
+        np_random_state = np.random.get_state()
+
+        random.seed(self.seed)
+        np.random.seed(self.seed)
+        if len(predictions) != len(references):
+            return {
+                "error": "predictions and references have different "
+                f"length. len(predictions): {len(predictions)}, "
+                f"len(references): {len(references)}"
+            }
+        # use codes pre-downloaded to opencompass repo, avoid downloading
+        local_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "hf_metrics",
+            self.metric + ".py",
+        )
+        if os.path.exists(local_path):
+            metric = evaluate.load(local_path)
+        else:
+            metric = evaluate.load(self.metric)
+
+        preprocessed = self._preprocess(predictions, references)
+
+        scores = metric.compute(**preprocessed)
+        sample_accuracy = self._compute_sample_accuracy(
+            **preprocessed, sample_ids=sample_ids, metric=metric
+        )
+
+        scores = {**scores, **sample_accuracy}
+        result = self._postprocess(scores)
+
+        random.setstate(random_state)
+        np.random.set_state(np_random_state)
+        return result
