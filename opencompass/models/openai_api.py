@@ -249,9 +249,7 @@ class OpenAI(BaseAPIModel):
                                       str(response['error']))
             max_num_retries += 1
 
-        raise RuntimeError('Calling OpenAI failed after retrying for '
-                           f'{max_num_retries} times. Check the logs for '
-                           'details.')
+        return f"### No response ### {response}"
 
     def get_token_len(self, prompt: str) -> int:
         """Get lengths of the tokenized string. Only English and Chinese
