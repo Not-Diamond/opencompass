@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 from mmengine.config import Config, ConfigDict
 
 from opencompass.registry import PARTITIONERS
-from opencompass.utils import get_infer_output_path
+from opencompass.utils import get_infer_output_path, get_logger
 
 from .base import BasePartitioner
 
@@ -22,9 +22,12 @@ class NDNaivePartitioner(BasePartitioner):
             to the task config.
     """
 
-    def __init__(self, out_dir: str, n: int = 1, keep_keys: Optional[List[str]] = None):
+    def __init__(
+        self, out_dir: str, n: int = 1, keep_keys: Optional[List[str]] = None, **kwargs
+    ):
         super().__init__(out_dir=out_dir, keep_keys=keep_keys)
         self.n = n
+        get_logger().warn(f"Ignoring kwargs passed to NDNaivePartitioner: {kwargs}")
 
     def partition(
         self,
