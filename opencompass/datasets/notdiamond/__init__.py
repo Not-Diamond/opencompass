@@ -12,3 +12,4 @@ from .squadv2 import *
 from .superglue import *
 from .winogrande import *
 from .xsum import *
+from .flores100 import *
