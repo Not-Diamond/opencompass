@@ -7,7 +7,7 @@ import math
 import os.path as osp
 import statistics
 import time
-from collections import Counter
+from collections import Counter, defaultdict
 from inspect import signature
 from shutil import which
 from typing import List, Optional
@@ -16,6 +16,7 @@ from datetime import datetime
 import mmengine
 from mmengine.config import Config, ConfigDict
 from mmengine.utils import mkdir_or_exist
+import sentry_sdk
 
 from opencompass.registry import (ICL_EVALUATORS, MODELS, TASKS,
                                   TEXT_POSTPROCESSORS)
@@ -90,6 +91,11 @@ class NDICLEvalTask(BaseTask):
         return template.format(task_cmd=command)
 
     def run(self):
+        sentry_sdk.init(
+            dsn="https://6f02eb3c39ab2ba61a8e77c6e3590062@o4506820913201152.ingest.us.sentry.io/4507376224370688",
+            traces_sample_rate=1.0,
+            profiles_sample_rate=1.0,
+        )
         for model_cfg, dataset_cfgs in zip(self.model_cfgs, self.dataset_cfgs):
             for dataset_cfg in dataset_cfgs:
                 self.model_cfg = model_cfg
@@ -332,8 +338,10 @@ class NDICLEvalTask(BaseTask):
         details = result["details"]
         assert isinstance(sample_score, list) or isinstance(sample_score, dict)
 
+        failures = defaultdict(dict)
         if isinstance(sample_score, list):
             for i, sample_result in enumerate(sample_score):
+                sample_id = sample_result['sample_id']
                 origin_prediction = details[f"{i}"]["origin_prediction"]
                 if "### No response ###" in origin_prediction:
                     if not failure_found:
@@ -346,9 +354,11 @@ class NDICLEvalTask(BaseTask):
                                                 dataset,
                                                 metric,
                                                 success)
+                    failures[sample_id] = details
         elif isinstance(sample_score, dict):
             for sub, sub_score in sample_score.items():
                 for i, sample_result in enumerate(sub_score):
+                    sample_id = sample_result['sample_id']
                     origin_prediction = details[f"{i}"]["origin_prediction"]
                     if "### No response ###" in origin_prediction:
                         if not failure_found:
@@ -361,9 +371,16 @@ class NDICLEvalTask(BaseTask):
                                                     dataset,
                                                     f"{metric}.{sub}",
                                                     success)
+                        failures[sample_id] = details
         if failure_found:
             with wandb.init(project=f"LLM Eval", name=f"{model}_{timestamp}", dir=self.work_dir) as run:
                 run.log({"eval_fail": eval_failure_table})
+
+            out_path = get_infer_output_path(self.model_cfg, self.dataset_cfg,
+                                            osp.join(self.work_dir, 'failures'))
+            mmengine.dump(failures, out_path, ensure_ascii=False, indent=4)
+            exc = RuntimeError(f"Failed to evaluate {len(failures)} samples for {model} on {dataset}. See {out_path} for details.")
+            sentry_sdk.capture_exception(exc)
 
     # def _save_results_to_db(self, result: dict, metric: str):
     #     raise RuntimeError("This method is deprecated.")
