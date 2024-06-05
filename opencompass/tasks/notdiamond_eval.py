@@ -354,7 +354,7 @@ class NDICLEvalTask(BaseTask):
                                                 dataset,
                                                 metric,
                                                 success)
-                    failures[sample_id] = details
+                    failures[sample_id] = self.get_sample_from_dataset_file(dataset, sample_id)
         elif isinstance(sample_score, dict):
             for sub, sub_score in sample_score.items():
                 for i, sample_result in enumerate(sub_score):
@@ -371,7 +371,7 @@ class NDICLEvalTask(BaseTask):
                                                     dataset,
                                                     f"{metric}.{sub}",
                                                     success)
-                        failures[sample_id] = details
+                        failures[sample_id] = self.get_sample_from_dataset_file(dataset, sample_id)
         if failure_found:
             with wandb.init(project=f"LLM Eval", name=f"{model}_{timestamp}", dir=self.work_dir) as run:
                 run.log({"eval_fail": eval_failure_table})
@@ -379,8 +379,17 @@ class NDICLEvalTask(BaseTask):
             out_path = get_infer_output_path(self.model_cfg, self.dataset_cfg,
                                             osp.join(self.work_dir, 'failures'))
             mmengine.dump(failures, out_path, ensure_ascii=False, indent=4)
-            exc = RuntimeError(f"Failed to evaluate {len(failures)} samples for {model} on {dataset}. See {out_path} for details.")
+            exc = RuntimeError(f"Failed to evaluate {len(failures)} samples for {model} on {dataset}. See {out_path} for details, and try to re-run those samples using `db_url={out_path}.")
             sentry_sdk.capture_exception(exc)
+
+    def get_sample_from_dataset_file(self, dataset_abbr: str, sample_id: str) -> dict:
+        dataset_file = get_infer_output_path(self.model_cfg, self.dataset_cfg, osp.join(EVALUATIONS_WORK_DIR, f"{dataset_abbr}.json"))
+        with open(dataset_file) as f:
+            dataset = json.load(f)
+        if sample_id not in dataset:
+            raise AssertionError(f"Could not find {sample_id} in {dataset_file}")
+        return dataset[sample_id]
+
 
     # def _save_results_to_db(self, result: dict, metric: str):
     #     raise RuntimeError("This method is deprecated.")
